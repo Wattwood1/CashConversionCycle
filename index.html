@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCC Analyzer — Cash Conversion Cycle Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<style>
+/* ── Reset & tokens ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #F1F5F9;
+  --card:      #FFFFFF;
+  --border:    #E2E8F0;
+  --hdr:       #0F172A;
+  --text:      #1E293B;
+  --muted:     #64748B;
+  --primary:   #2563EB;
+  --radius:    8px;
+  --shadow:    0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.05);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 13.5px;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+header {
+  background: var(--hdr);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 54px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+
+.logo {
+  color: #F8FAFC;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-accent { color: #60A5FA; }
+
+.logo-sub {
+  font-size: 11px;
+  font-weight: 400;
+  color: #64748B;
+  border-left: 1px solid #334155;
+  padding-left: 12px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+nav.tabs { display: flex; gap: 2px; }
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.tab-btn:hover  { color: #F8FAFC; background: rgba(255,255,255,.07); }
+.tab-btn.active { color: #F8FAFC; background: var(--primary); }
+
+/* ── Layout ─────────────────────────────────────────────────── */
+main { max-width: 1200px; margin: 0 auto; padding: 22px 24px; }
+
+.tab-panel          { display: none; }
+.tab-panel.active   { display: block; }
+
+/* ── Cards ──────────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.card-title    { font-size: 14px; font-weight: 600; }
+.card-subtitle { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* ── Controls ───────────────────────────────────────────────── */
+.controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.ctrl-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ctrl-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  white-space: nowrap;
+}
+
+/* ── Pills ──────────────────────────────────────────────────── */
+.pills { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.pill {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 4px 11px;
+  border-radius: 100px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.pill:hover        { border-color: var(--primary); color: var(--primary); }
+.pill.active       { background: var(--primary); border-color: var(--primary); color: #fff; }
+.pill:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ── KPI grid ───────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.kpi-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+  border-top: 3px solid var(--border);
+}
+
+.kpi-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.kpi-value {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+
+.kpi-sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+.c-pos  { color: #16A34A; }
+.c-neg  { color: #DC2626; }
+.c-warn { color: #D97706; }
+.c-base { color: var(--text); }
+
+/* ── Chart wrappers ─────────────────────────────────────────── */
+.chart-wrap      { position: relative; height: 390px; }
+.chart-wrap-tall { position: relative; height: 500px; }
+
+/* ── Tables ─────────────────────────────────────────────────── */
+.scroll-x { overflow-x: auto; }
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.data-table th {
+  text-align: right;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  padding: 7px 10px;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+.data-table th:first-child { text-align: left; min-width: 120px; }
+
+.data-table td {
+  text-align: right;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.data-table td:first-child { text-align: left; font-weight: 500; }
+.data-table tr:last-child td  { border-bottom: none; }
+.data-table tr:hover td       { background: var(--bg); }
+.data-table .td-null          { color: #CBD5E1; }
+.data-table .td-pos           { color: #16A34A; }
+.data-table .td-neg           { color: #DC2626; }
+
+/* ── Misc UI ────────────────────────────────────────────────── */
+.dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+select {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  min-width: 220px;
+}
+select:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+
+/* ── Company checkboxes (Events tab) ────────────────────────── */
+.company-checks { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.chk-lbl {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: all .15s;
+  user-select: none;
+}
+.chk-lbl input { display: none; }
+.chk-lbl:hover { border-color: #94A3B8; color: var(--text); }
+.chk-lbl.on    { font-weight: 600; }
+
+/* ── Event cards ────────────────────────────────────────────── */
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 10px;
+}
+
+.ev-card {
+  display: flex;
+  gap: 10px;
+  padding: 11px 13px;
+  background: var(--bg);
+  border-radius: 6px;
+  border-left: 3px solid;
+}
+
+.ev-year  { font-size: 13px; font-weight: 800; white-space: nowrap; min-width: 34px; }
+.ev-name  { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.ev-desc  { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+
+/* ── Spotlight notes ────────────────────────────────────────── */
+.note {
+  font-size: 11.5px;
+  color: var(--muted);
+  background: var(--bg);
+  border-radius: 5px;
+  padding: 7px 11px;
+  margin-top: -4px;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 800px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  header    { padding: 0 12px; gap: 12px; }
+  main      { padding: 12px; }
+  .logo-sub { display: none; }
+}
+@media (max-width: 520px) {
+  nav.tabs .tab-btn { padding: 6px 9px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════
+     HEADER
+═════════════════════════════════════════════════════════════ -->
+<header>
+  <div class="logo">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="1" y="1" width="7" height="7" rx="1.5" fill="#60A5FA"/>
+      <rect x="10" y="1" width="7" height="7" rx="1.5" fill="#818CF8"/>
+      <rect x="1" y="10" width="7" height="7" rx="1.5" fill="#34D399"/>
+      <rect x="10" y="10" width="7" height="7" rx="1.5" fill="#F59E0B"/>
+    </svg>
+    <span><span class="logo-accent">CCC</span> Analyzer</span>
+    <span class="logo-sub">Cash Conversion Cycle · 13 Companies · 2013–2024</span>
+  </div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="spotlight">Company Spotlight</button>
+    <button class="tab-btn" data-tab="compare">Industry Compare</button>
+    <button class="tab-btn" data-tab="events">Supply Chain Events</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ════════════════════════════════════════════════════════════
+     TAB 1 — OVERVIEW
+═════════════════════════════════════════════════════════════ -->
+<section id="tab-overview" class="tab-panel active">
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Industry</span>
+      <div class="pills" id="ind-pills">
+        <button class="pill active" data-v="All">All</button>
+        <button class="pill" data-v="Technology">Technology</button>
+        <button class="pill" data-v="Retail">Retail</button>
+        <button class="pill" data-v="Healthcare">Healthcare</button>
+        <button class="pill" data-v="Automotive">Automotive</button>
+        <button class="pill" data-v="Airlines">Airlines</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Metric</span>
+      <div class="pills" id="ov-metric-pills">
+        <button class="pill active" data-v="CCC">CCC</button>
+        <button class="pill" data-v="DIO">DIO</button>
+        <button class="pill" data-v="DSO">DSO</button>
+        <button class="pill" data-v="DPO">DPO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title" id="ov-title">CCC — Industry Averages (2013–2024)</div>
+        <div class="card-subtitle" id="ov-sub">Averages exclude years with no data for a given industry</div>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-ov"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" id="ov-tbl-title" style="margin-bottom:14px">Latest Available Values</div>
+    <div class="scroll-x"><table class="data-table" id="tbl-ov"></table></div>
+  </div>
+
+</section>
+
+<!-- ════════════════════════════════════════════════════════════
+     TAB 2 — COMPANY SPOTLIGHT
+═════════════════════════════════════════════════════════════ -->
+<section id="tab-spotlight" class="tab-panel">
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Company</span>
+      <select id="sp-select"></select>
+    </div>
+    <div id="sp-badge"></div>
+  </div>
+
+  <div class="kpi-grid" id="sp-kpis"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title" id="sp-chart-title"></div>
+        <div class="card-subtitle">All values in days; gaps indicate missing EDGAR XBRL data</div>
+      </div>
+      <div class="pills" id="sp-metric-pills">
+        <button class="pill active" data-v="all">All Metrics</button>
+        <button class="pill" data-v="CCC">CCC</button>
+        <button class="pill" data-v="DIO">DIO</button>
+        <button class="pill" data-v="DSO">DSO</button>
+        <button class="pill" data-v="DPO">DPO</button>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-sp"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">Historical Data — All Years</div>
+    <div class="scroll-x"><table class="data-table" id="tbl-sp"></table></div>
+  </div>
+
+</section>
+
+<!-- ════════════════════════════════════════════════════════════
+     TAB 3 — INDUSTRY COMPARE
+═════════════════════════════════════════════════════════════ -->
+<section id="tab-compare" class="tab-panel">
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Metric</span>
+      <div class="pills" id="cmp-metric-pills">
+        <button class="pill active" data-v="CCC">CCC</button>
+        <button class="pill" data-v="DIO">DIO</button>
+        <button class="pill" data-v="DSO">DSO</button>
+        <button class="pill" data-v="DPO">DPO</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">View</span>
+      <div class="pills" id="cmp-view-pills">
+        <button class="pill active" data-v="latest">Latest Year Snapshot</button>
+        <button class="pill" data-v="trend">10-Year Industry Trend</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title" id="cmp-title">CCC — Latest Available Year, All Companies</div>
+        <div class="card-subtitle" id="cmp-sub">Sorted ascending; colored by industry · hover for year detail</div>
+      </div>
+    </div>
+    <div class="chart-wrap-tall"><canvas id="chart-cmp"></canvas></div>
+  </div>
+
+</section>
+
+<!-- ════════════════════════════════════════════════════════════
+     TAB 4 — SUPPLY CHAIN EVENTS
+═════════════════════════════════════════════════════════════ -->
+<section id="tab-events" class="tab-panel">
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Metric</span>
+      <div class="pills" id="ev-metric-pills">
+        <button class="pill active" data-v="CCC">CCC</button>
+        <button class="pill" data-v="DIO">DIO</button>
+        <button class="pill" data-v="DSO">DSO</button>
+        <button class="pill" data-v="DPO">DPO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls" style="margin-top:-4px">
+    <div class="ctrl-group" style="align-items:flex-start">
+      <span class="ctrl-label" style="padding-top:6px">Companies</span>
+      <div class="company-checks" id="ev-checks"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title" id="ev-title">CCC — Selected Companies (2013–2024)</div>
+        <div class="card-subtitle">Dashed vertical lines mark key supply chain disruptions</div>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-ev"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px">Key Supply Chain Events</div>
+    <div class="events-grid" id="ev-list"></div>
+  </div>
+
+</section>
+
+</main>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   DATA
+══════════════════════════════════════════════════════════════ */
+const YEARS = [2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024];
+const YL    = YEARS.map(String); // chart labels
+
+const D = { // company data keyed by ticker
+  AAPL:  { name:'Apple Inc.',          industry:'Technology', color:'#2563EB', dash:[],
+    DIO:[ 4.48, 7.33, 7.23, 7.64, 5.55,13.49,10.24, 9.15, 9.16,14.16, 8.48,10.34],
+    DSO:[36.85,30.56,37.29,33.64,24.60,30.25,36.92,31.51,22.61,34.94,28.12,27.31],
+    DPO:[119.96,92.93,103.39,115.39,97.17,122.92,144.63,103.06,95.42,117.89,109.88,102.23],
+    CCC:[-78.62,-55.05,-58.87,-74.11,-67.01,-79.17,-97.47,-62.40,-63.65,-68.78,-73.28,-64.58] },
+  MSFT:  { name:'Microsoft Corp.',     industry:'Technology', color:'#0EA5E9', dash:[6,3],
+    DIO:[26.64,40.35,47.63,63.50,38.38,24.29,28.36,19.63,16.12,20.88,26.15,14.57],
+    DSO:[82.35,86.57,91.63,75.28,71.29,89.82,100.09,97.65,92.85,97.09,96.11,89.63],
+    DPO:[97.83,100.53,133.07,144.22,117.60,82.29,91.80,89.29,106.58,120.11,132.77,105.42],
+    CCC:[11.16,26.40,6.19,-5.44,-7.93,31.82,36.65,27.99,2.38,-2.14,-10.51,-1.23] },
+  GOOGL: { name:'Alphabet Inc.',       industry:'Technology', color:'#6366F1', dash:[2,3],
+    DIO:[null,null,null,6.98,3.47,7.78,8.86,6.12,3.70,5.04,null,null],
+    DSO:[null,null,null,63.91,68.81,74.14,68.61,67.56,69.75,78.60,null,null],
+    DPO:[null,null,null,27.43,26.45,32.59,35.06,34.09,28.37,26.01,null,null],
+    CCC:[null,null,null,43.45,45.83,49.33,42.42,39.60,45.07,57.63,null,null] },
+  DELL:  { name:'Dell Technologies',   industry:'Technology', color:'#818CF8', dash:[8,3,2,3],
+    DIO:[7.97,null,4.92,6.46,6.99,6.64,6.20,6.68,7.31,5.02,3.73,3.97],
+    DSO:[53.29,null,47.41,48.18,59.66,45.59,55.38,86.05,86.10,55.04,52.50,46.21],
+    DPO:[36.86,null,28.13,30.35,36.09,30.76,36.20,41.08,45.85,33.26,35.66,34.85],
+    CCC:[24.39,null,24.21,24.29,30.56,21.47,25.38,51.65,47.55,26.80,20.57,15.32] },
+  WMT:   { name:'Walmart Inc.',        industry:'Retail',     color:'#16A34A', dash:[],
+    DIO:[47.73,null,46.48,46.01,44.46,43.52,44.24,43.27,42.09,41.58,49.07,48.14],
+    DSO:[5.53,null,5.20,5.19,4.23,4.42,4.26,4.63,4.49,4.57,5.44,5.10],
+    DPO:[41.49,null,38.76,39.15,38.48,41.89,46.57,46.00,44.50,45.45,47.99,45.72],
+    CCC:[11.77,null,12.91,12.06,10.21,6.05,1.92,1.90,2.09,0.70,6.53,7.51] },
+  AMZN:  { name:'Amazon.com Inc.',     industry:'Retail',     color:'#0D9488', dash:[6,3],
+    DIO:[59.04,58.84,55.91,59.58,58.38,66.36,56.00,53.76,52.47,51.06,46.11,42.10],
+    DSO:[28.98,28.48,27.51,23.19,28.44,35.33,34.22,32.62,31.93,31.10,32.91,37.11],
+    DPO:[130.37,120.15,110.88,118.64,128.93,143.15,124.54,123.76,159.95,123.07,106.68,107.39],
+    CCC:[-42.35,-32.83,-27.46,-35.87,-42.10,-41.45,-34.31,-37.37,-75.55,-40.91,-27.66,-28.18] },
+  COST:  { name:'Costco Wholesale',    industry:'Retail',     color:'#84CC16', dash:[2,3],
+    DIO:[33.32,33.19,33.57,33.02,32.39,34.88,null,33.77,33.63,35.80,38.29,30.48],
+    DSO:[4.21,4.42,3.98,3.97,3.93,4.40,null,3.96,3.70,3.95,4.17,3.67],
+    DPO:[34.29,33.09,33.71,33.41,27.49,34.08,null,34.61,38.93,40.99,38.17,32.01],
+    CCC:[3.24,4.51,3.85,3.58,8.83,5.20,null,3.12,-1.60,-1.25,4.30,2.15] },
+  JNJ:   { name:'Johnson & Johnson',   industry:'Healthcare', color:'#BE185D', dash:[],
+    DIO:[134.37,132.77,133.70,129.22,138.03,146.83,123.38,121.53,123.77,133.37,160.15,165.92],
+    DSO:[63.48,63.60,56.23,52.71,60.94,68.49,67.31,64.79,60.39,67.55,65.08,67.87],
+    DPO:[104.53,105.60,124.70,107.00,117.25,122.45,108.14,115.11,125.90,141.95,154.24,142.94],
+    CCC:[93.31,90.76,65.23,74.93,81.72,92.86,82.55,71.20,58.25,58.97,70.99,90.85] },
+  PFE:   { name:'Pfizer Inc.',         industry:'Healthcare', color:'#A855F7', dash:[6,3],
+    DIO:[177.42,229.16,215.63,286.34,256.61,224.47,244.07,287.06,363.46,389.74,106.36,108.29],
+    DSO:[63.84,62.49,59.44,60.16,61.45,56.80,55.74,60.55,70.61,100.59,54.29,41.73],
+    DPO:[85.29,120.19,122.23,137.97,171.60,137.92,151.94,157.87,194.10,239.98,80.64,71.31],
+    CCC:[155.96,171.45,152.85,208.53,146.46,143.36,147.87,189.74,239.97,250.35,80.01,78.70] },
+  F:     { name:'Ford Motor Company',  industry:'Automotive', color:'#EA580C', dash:[],
+    DIO:[null,null,null,24.29,26.10,32.32,31.19,28.89,29.29,39.06,44.82,42.51],
+    DSO:[null,null,null,27.97,25.85,25.49,26.06,21.03,23.40,32.64,42.11,36.03],
+    DPO:[null,null,null,59.18,62.46,67.34,59.81,55.37,60.17,72.35,81.52,70.59],
+    CCC:[null,null,null,-6.92,-10.52,-9.53,-2.56,-5.46,-7.49,-0.65,5.42,7.94] },
+  TM:    { name:'Toyota Motor Corp',   industry:'Automotive', color:'#D97706', dash:[6,3],
+    DIO:[39.65,38.40,39.03,35.97,null,40.63,36.21,35.94,null,null,null,null],
+    DSO:[38.73,33.68,29.96,26.81,null,27.19,26.80,28.65,null,null,null,null],
+    DPO:[48.84,44.85,44.02,41.70,null,43.66,36.88,35.80,null,null,null,null],
+    CCC:[29.53,27.23,24.97,21.08,null,24.17,26.13,28.79,null,null,null,null] },
+  DAL:   { name:'Delta Air Lines',     industry:'Airlines',   color:'#DC2626', dash:[],
+    DIO:[6.82,7.47,5.67,3.63,5.76,10.30,null,null,null,13.56,18.55,10.22],
+    DSO:[17.60,16.02,22.20,18.27,18.51,21.99,null,null,null,51.33,38.77,22.59],
+    DPO:[25.25,24.34,27.84,26.24,28.53,40.87,null,null,null,52.35,66.53,34.59],
+    CCC:[-0.84,-0.85,0.02,-4.35,-4.27,-8.58,null,null,null,12.54,-9.20,-1.78] },
+  LUV:   { name:'Southwest Airlines',  industry:'Airlines',   color:'#F43F5E', dash:[6,3],
+    DIO:[null,null,null,null,null,null,null,null,null,null,null,null],
+    DSO:[null,null,null,null,null,null,null,null,null,null,null,null],
+    DPO:[null,null,null,null,null,null,null,null,null,null,null,null],
+    CCC:[null,null,null,null,null,null,null,null,null,null,null,null] },
+};
+
+const INDS = {
+  Technology: ['AAPL','MSFT','GOOGL','DELL'],
+  Retail:     ['WMT','AMZN','COST'],
+  Healthcare: ['JNJ','PFE'],
+  Automotive: ['F','TM'],
+  Airlines:   ['DAL','LUV'],
+};
+
+const IND_COLOR = {
+  Technology:'#2563EB', Retail:'#16A34A',
+  Healthcare:'#BE185D', Automotive:'#EA580C', Airlines:'#DC2626',
+};
+
+const IND_BADGE = {
+  Technology: ['#EFF6FF','#2563EB'],
+  Retail:     ['#F0FDF4','#16A34A'],
+  Healthcare: ['#FDF2F8','#BE185D'],
+  Automotive: ['#FFF7ED','#EA580C'],
+  Airlines:   ['#FEF2F2','#DC2626'],
+};
+
+const METRIC_COLOR = { DIO:'#3B82F6', DSO:'#10B981', DPO:'#F59E0B', CCC:'#8B5CF6' };
+
+const EVENTS = [
+  { year:2015, label:'China Slowdown',      color:'#F59E0B',
+    desc:'Chinese stock market crash and yuan devaluation trigger global supply chain pullback; companies build inventory buffers.' },
+  { year:2018, label:'US-China Tariffs',    color:'#DC2626',
+    desc:'US imposes 25% tariffs on $34B of Chinese goods. Retaliatory measures hit US exporters; DPO and inventory levels spike as firms front-load purchases.' },
+  { year:2020, label:'COVID-19 Pandemic',   color:'#7C3AED',
+    desc:'Global factory shutdowns, port closures, and simultaneous demand collapse disrupt every supply chain. Inventory days plunge then surge.' },
+  { year:2021, label:'Supply Chain Crisis', color:'#EA580C',
+    desc:'Semiconductor shortage, container imbalances, and port congestion peak. Lead times triple; DIO rises sharply across manufacturing and retail.' },
+  { year:2022, label:'Russia-Ukraine War',  color:'#EF4444',
+    desc:'Energy and commodity shocks ripple through European supply chains. Fed tightening triggers aggressive destocking; payable days compress.' },
+  { year:2023, label:'Post-COVID Reset',    color:'#0D9488',
+    desc:'Supply chains normalise. Companies unwind excess inventory accumulated 2020-2022, compressing DIO to near pre-pandemic levels for most sectors.' },
+];
+
+/* ══════════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════════ */
+const S = {
+  ov:  { industry:'All',  metric:'CCC' },
+  sp:  { ticker:'AAPL',   metric:'all' },
+  cmp: { metric:'CCC',    view:'latest' },
+  ev:  { metric:'CCC',    tickers: new Set(['AAPL','AMZN','WMT','MSFT','JNJ','DAL']) },
+};
+
+const CH = {}; // chart instances
+
+/* ══════════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════════ */
+function rgba(hex, a) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return `rgba(${n>>16},${(n>>8)&0xff},${n&0xff},${a})`;
+}
+
+function latest(ticker, metric) {
+  const arr = D[ticker][metric];
+  for (let i = arr.length-1; i >= 0; i--) {
+    if (arr[i] !== null) return { v: arr[i], yr: YEARS[i], i };
+  }
+  return null;
+}
+
+function indAvg(industry, metric) {
+  return YL.map((_,i) => {
+    const vals = INDS[industry].map(t => D[t][metric][i]).filter(v => v !== null);
+    return vals.length ? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : null;
+  });
+}
+
+function killChart(id) {
+  if (CH[id]) { CH[id].destroy(); delete CH[id]; }
+}
+
+function baseOpts(spanGaps = false) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode:'index', intersect:false },
+    plugins: {
+      legend: { position:'bottom', labels:{ boxWidth:20, padding:14, font:{size:11.5} } },
+      tooltip: {
+        callbacks: {
+          label: c => c.raw === null ? null : ` ${c.dataset.label}: ${c.raw.toFixed(1)} d`,
+        },
+      },
+    },
+    scales: {
+      x: { grid:{ color:'#F1F5F9' }, ticks:{ font:{size:11}, color:'#94A3B8' } },
+      y: {
+        grid: {
+          color: ctx => ctx.tick.value === 0 ? '#94A3B8' : '#F1F5F9',
+          lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1,
+        },
+        ticks: { font:{size:11}, color:'#94A3B8', callback: v => v+'d' },
+      },
+    },
+  };
+}
+
+function lineDs(label, data, color, dash=[], spanGaps=false, fill=false) {
+  return {
+    label, data,
+    borderColor: color,
+    backgroundColor: fill ? rgba(color,.07) : 'transparent',
+    borderWidth: 2.5,
+    borderDash: dash,
+    pointRadius: 3,
+    pointHoverRadius: 5,
+    pointBackgroundColor: color,
+    tension: 0.25,
+    spanGaps,
+    fill,
+  };
+}
+
+function fmt(v) { return v === null ? '—' : v.toFixed(1); }
+
+function tdVal(v, metric) {
+  if (v === null) return '<td class="td-null">—</td>';
+  const cls = metric === 'CCC'
+    ? (v < 0 ? 'td-pos' : v > 100 ? 'td-neg' : '')
+    : '';
+  return `<td class="${cls}">${v.toFixed(1)}</td>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   OVERVIEW
+══════════════════════════════════════════════════════════════ */
+function renderOv() {
+  const { industry, metric } = S.ov;
+  killChart('ov');
+
+  const isAll = industry === 'All';
+  let datasets = [], rows = [];
+
+  if (isAll) {
+    Object.entries(INDS).forEach(([ind, tickers]) => {
+      const data = indAvg(ind, metric);
+      datasets.push(lineDs(ind, data, IND_COLOR[ind], [], true));
+      rows.push({ label: ind, color: IND_COLOR[ind], data });
+    });
+  } else {
+    INDS[industry].forEach(tk => {
+      const c = D[tk];
+      datasets.push(lineDs(c.name, c[metric], c.color, c.dash, false));
+      rows.push({ label: c.name, color: c.color, data: c[metric] });
+    });
+  }
+
+  document.getElementById('ov-title').textContent =
+    `${metric} — ${isAll ? 'Industry Averages' : industry + ' Companies'} (2013–2024)`;
+  document.getElementById('ov-sub').textContent = isAll
+    ? 'Industry average of non-null values per year; gaps = no data for any member'
+    : `Individual company lines for ${industry} · gaps = missing EDGAR XBRL data`;
+  document.getElementById('ov-tbl-title').textContent =
+    isAll ? `${metric} by Industry — All Years` : `${metric} by Company — All Years`;
+
+  const opts = baseOpts(isAll);
+  CH.ov = new Chart(document.getElementById('chart-ov'), {
+    type: 'line',
+    data: { labels: YL, datasets },
+    options: opts,
+  });
+
+  // Table
+  const cols = YEARS.map(y => `<th>${y}</th>`).join('');
+  const tbody = rows.map(r => {
+    const cells = r.data.map(v => tdVal(v, metric)).join('');
+    return `<tr><td><span style="display:inline-flex;align-items:center;gap:6px">
+      <span class="dot" style="background:${r.color}"></span>${r.label}</span></td>${cells}</tr>`;
+  }).join('');
+  document.getElementById('tbl-ov').innerHTML =
+    `<thead><tr><th>${isAll?'Industry':'Company'}</th>${cols}</tr></thead><tbody>${tbody}</tbody>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SPOTLIGHT
+══════════════════════════════════════════════════════════════ */
+function renderSp() {
+  const { ticker, metric } = S.sp;
+  const c = D[ticker];
+  killChart('sp');
+
+  // Badge
+  const [bg, fg] = IND_BADGE[c.industry] || ['#F1F5F9','#64748B'];
+  document.getElementById('sp-badge').innerHTML =
+    `<span class="badge" style="background:${bg};color:${fg}">${c.industry}</span>`;
+
+  // KPI cards
+  const KD = {
+    DIO:{ title:'Days Inventory Outstanding', note:'Inventory ÷ COGS × 365', hint:'Lower = faster turnover' },
+    DSO:{ title:'Days Sales Outstanding',     note:'AR ÷ Revenue × 365',     hint:'Lower = faster collections' },
+    DPO:{ title:'Days Payable Outstanding',   note:'AP ÷ COGS × 365',        hint:'Higher = better leverage' },
+    CCC:{ title:'Cash Conversion Cycle',      note:'DIO + DSO − DPO',        hint:'Negative = self-financing' },
+  };
+  document.getElementById('sp-kpis').innerHTML = ['DIO','DSO','DPO','CCC'].map(m => {
+    const lv = latest(ticker, m);
+    const v = lv ? lv.v : null;
+    let cls = 'c-base';
+    if (v !== null) {
+      if (m==='CCC') cls = v<0?'c-pos':v>80?'c-neg':'c-warn';
+      if (m==='DIO') cls = v<30?'c-pos':v>150?'c-neg':'c-warn';
+      if (m==='DSO') cls = v<30?'c-pos':v>80?'c-neg':'c-warn';
+      if (m==='DPO') cls = v>60?'c-pos':v<20?'c-neg':'c-warn';
+    }
+    return `<div class="kpi-card" style="border-top-color:${METRIC_COLOR[m]}">
+      <div class="kpi-label">${KD[m].title}</div>
+      <div class="kpi-value ${cls}">${v!==null?v.toFixed(1):'—'}</div>
+      <div class="kpi-sub">${lv?`FY${lv.yr} · `:''} ${KD[m].hint}</div>
+    </div>`;
+  }).join('');
+
+  // Chart title
+  document.getElementById('sp-chart-title').textContent =
+    `${c.name} — ${metric==='all'?'DIO / DSO / DPO / CCC':metric} (2013–2024)`;
+
+  // Datasets
+  const all4 = [
+    { k:'DIO', d:c.DIO }, { k:'DSO', d:c.DSO },
+    { k:'DPO', d:c.DPO }, { k:'CCC', d:c.CCC },
+  ];
+  const visible = metric === 'all' ? all4 : all4.filter(x => x.k === metric);
+  const datasets = visible.map(x =>
+    lineDs(x.k, x.d, METRIC_COLOR[x.k], [], false, metric==='all'&&x.k==='CCC')
+  );
+
+  const opts = baseOpts();
+  CH.sp = new Chart(document.getElementById('chart-sp'), {
+    type:'line', data:{ labels:YL, datasets }, options:opts,
+  });
+
+  // Historical table
+  const hdr = ['DIO','DSO','DPO','CCC'].map(m =>
+    `<th style="color:${METRIC_COLOR[m]}">${m}</th>`).join('');
+  const tbody = YEARS.map((yr,i) => {
+    const cells = ['DIO','DSO','DPO','CCC'].map(m => tdVal(c[m][i], m)).join('');
+    return `<tr><td>${yr}</td>${cells}</tr>`;
+  }).join('');
+  document.getElementById('tbl-sp').innerHTML =
+    `<thead><tr><th>Year</th>${hdr}</tr></thead><tbody>${tbody}</tbody>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COMPARE
+══════════════════════════════════════════════════════════════ */
+function renderCmp() {
+  const { metric, view } = S.cmp;
+  killChart('cmp');
+
+  if (view === 'latest') {
+    // Horizontal bar: all companies, sorted by latest value
+    const rows = Object.entries(D)
+      .map(([tk, c]) => {
+        const lv = latest(tk, metric);
+        return { tk, name: c.name.replace(/ (Inc\.|Corp\.|Company|Wholesale)\.?/,''),
+                 color: c.color, industry: c.industry,
+                 v: lv?.v ?? null, yr: lv?.yr ?? null };
+      })
+      .filter(r => r.v !== null)
+      .sort((a,b) => a.v - b.v);
+
+    document.getElementById('cmp-title').textContent =
+      `${metric} — Latest Available Year, All Companies`;
+    document.getElementById('cmp-sub').textContent =
+      'Sorted ascending by value · colored by industry · hover for year';
+
+    CH.cmp = new Chart(document.getElementById('chart-cmp'), {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => r.name),
+        datasets: [{
+          label: metric,
+          data: rows.map(r => r.v),
+          backgroundColor: rows.map(r => rgba(r.color, .70)),
+          borderColor:     rows.map(r => r.color),
+          borderWidth: 2,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            title: ctx => {
+              const r = rows[ctx[0].dataIndex];
+              return `${r.name} · ${r.industry}`;
+            },
+            label: ctx => {
+              const r = rows[ctx.dataIndex];
+              return ` ${metric} (FY${r.yr}): ${ctx.raw.toFixed(1)} days`;
+            },
+          }},
+        },
+        scales: {
+          x: {
+            grid: {
+              color: ctx => ctx.tick.value===0 ? '#94A3B8' : '#F1F5F9',
+              lineWidth: ctx => ctx.tick.value===0 ? 1.5 : 1,
+            },
+            ticks: { font:{size:11}, color:'#94A3B8', callback: v => v+'d' },
+          },
+          y: {
+            grid: { display:false },
+            ticks: { font:{size:11.5}, color:'#1E293B' },
+          },
+        },
+      },
+    });
+
+  } else {
+    // Line trend: industry averages over time
+    const datasets = Object.entries(INDS).map(([ind, tickers]) =>
+      lineDs(ind, indAvg(ind, metric), IND_COLOR[ind], [], true)
+    );
+
+    document.getElementById('cmp-title').textContent =
+      `${metric} — 10-Year Industry Trend`;
+    document.getElementById('cmp-sub').textContent =
+      'Industry averages of non-null company values; spans gaps between missing years';
+
+    const opts = baseOpts(true);
+    CH.cmp = new Chart(document.getElementById('chart-cmp'), {
+      type:'line', data:{ labels:YL, datasets }, options:opts,
+    });
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SUPPLY CHAIN EVENTS
+══════════════════════════════════════════════════════════════ */
+function renderEv() {
+  const { metric, tickers } = S.ev;
+  killChart('ev');
+
+  document.getElementById('ev-title').textContent =
+    `${metric} — Selected Companies (2013–2024)`;
+
+  const datasets = [...tickers].map(tk =>
+    lineDs(D[tk].name, D[tk][metric], D[tk].color, D[tk].dash, false)
+  );
+
+  // Annotation: one vertical line per event
+  const annotations = {};
+  EVENTS.forEach((ev, i) => {
+    annotations[`ev${i}`] = {
+      type: 'line',
+      xMin: String(ev.year),
+      xMax: String(ev.year),
+      borderColor: rgba(ev.color, .55),
+      borderWidth: 2,
+      borderDash: [5, 4],
+      label: {
+        display: true,
+        content: ev.label,
+        position: 'end',
+        backgroundColor: rgba(ev.color, .88),
+        color: '#fff',
+        font: { size: 9, weight: '700' },
+        padding: { x:5, y:3 },
+        borderRadius: 3,
+      },
+    };
+  });
+
+  const opts = baseOpts(false);
+  opts.plugins.annotation = { annotations };
+
+  CH.ev = new Chart(document.getElementById('chart-ev'), {
+    type:'line', data:{ labels:YL, datasets }, options:opts,
+  });
+
+  // Event cards
+  document.getElementById('ev-list').innerHTML = EVENTS.map(ev =>
+    `<div class="ev-card" style="border-left-color:${ev.color}">
+      <div class="ev-year" style="color:${ev.color}">${ev.year}</div>
+      <div>
+        <div class="ev-name">${ev.label}</div>
+        <div class="ev-desc">${ev.desc}</div>
+      </div>
+    </div>`
+  ).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT — TAB SWITCHING
+══════════════════════════════════════════════════════════════ */
+function initTabs() {
+  const RENDER = {
+    overview: renderOv, spotlight: renderSp,
+    compare: renderCmp, events: renderEv,
+  };
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      RENDER[btn.dataset.tab]?.();
+    });
+  });
+}
+
+/* ── Pill helper ──────────────────────────────────────────── */
+function pillGroup(id, stateKey, stateField, renderFn) {
+  document.getElementById(id).addEventListener('click', e => {
+    const btn = e.target.closest('.pill');
+    if (!btn) return;
+    document.querySelectorAll(`#${id} .pill`).forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    stateKey[stateField] = btn.dataset.v;
+    renderFn();
+  });
+}
+
+/* ── Overview pills ───────────────────────────────────────── */
+function initOvPills() {
+  pillGroup('ind-pills',       S.ov, 'industry', renderOv);
+  pillGroup('ov-metric-pills', S.ov, 'metric',   renderOv);
+}
+
+/* ── Spotlight select + pills ─────────────────────────────── */
+function initSpotlight() {
+  const sel = document.getElementById('sp-select');
+  sel.innerHTML = Object.entries(D)
+    .map(([tk, c]) => `<option value="${tk}">${c.name} (${tk})</option>`)
+    .join('');
+  sel.value = 'AAPL';
+  sel.addEventListener('change', () => { S.sp.ticker = sel.value; renderSp(); });
+  pillGroup('sp-metric-pills', S.sp, 'metric', renderSp);
+}
+
+/* ── Compare pills ────────────────────────────────────────── */
+function initCmpPills() {
+  pillGroup('cmp-metric-pills', S.cmp, 'metric', renderCmp);
+  pillGroup('cmp-view-pills',   S.cmp, 'view',   renderCmp);
+}
+
+/* ── Events: metric pills + company checkboxes ────────────── */
+function initEvents() {
+  pillGroup('ev-metric-pills', S.ev, 'metric', renderEv);
+
+  const container = document.getElementById('ev-checks');
+  container.innerHTML = Object.entries(D).map(([tk, c]) => {
+    const on = S.ev.tickers.has(tk);
+    const style = on ? `color:${c.color};border-color:${c.color}` : '';
+    return `<label class="chk-lbl ${on?'on':''}" data-tk="${tk}" style="${style}">
+      <input type="checkbox" value="${tk}" ${on?'checked':''}>
+      <span class="dot" style="background:${c.color}"></span>${tk}
+    </label>`;
+  }).join('');
+
+  container.addEventListener('change', e => {
+    if (!e.target.matches('input')) return;
+    const lbl = e.target.closest('.chk-lbl');
+    const tk  = lbl.dataset.tk;
+    const c   = D[tk];
+    if (e.target.checked) {
+      S.ev.tickers.add(tk);
+      lbl.classList.add('on');
+      lbl.style.color = c.color;
+      lbl.style.borderColor = c.color;
+    } else {
+      S.ev.tickers.delete(tk);
+      lbl.classList.remove('on');
+      lbl.style.color = '';
+      lbl.style.borderColor = '';
+    }
+    renderEv();
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════════ */
+initTabs();
+initOvPills();
+initSpotlight();
+initCmpPills();
+initEvents();
+renderOv();   // first tab renders immediately
+</script>
+</body>
+</html>
